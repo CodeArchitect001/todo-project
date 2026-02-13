@@ -353,7 +353,10 @@ main_loop() {
         # 前台启动 claude，输出到终端，强制行缓冲
         # shellcheck disable=SC2086
         if command -v stdbuf >/dev/null; then
-            stdbuf -oL -eL "$NODE_BIN" "$CLAUDE_CLI" $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
+             # stdbuf 对命令解析较弱，这里直接调用，不通过 stdbuf 包装 node，
+             # 而是尝试通过环境变量控制 buffering (虽然 node 对此支持有限，但能规避 126 错误)
+             # 或者，我们放弃 stdbuf 包装，因为 node 交互式输出通常不需要它
+            "$NODE_BIN" "$CLAUDE_CLI" $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
         else
             "$NODE_BIN" "$CLAUDE_CLI" $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
         fi
