@@ -9,6 +9,12 @@
 # 清理可能干扰的环境变量
 unset CLAUDECODE 2>/dev/null || true
 
+# 加载环境变量 (如果有)
+if [ -f .env ]; then
+    source .env
+fi
+
+
 # 带时间戳的日志（提前定义，以便后续使用）
 LIVE_LOG="${LIVE_LOG:-.ai/live.log}"
 log() {
@@ -318,14 +324,12 @@ main_loop() {
         log "⏳ Claude 正在运行，请完成当前任务..."
         log "💡 提示：如果长时间无输出，请尝试输入 'y' 并回车（可能是权限确认提示）"
         echo "========================================"
-        # 使用 script 命令伪造 TTY，强制 Claude 认为是在交互式终端中运行
-        # script -q /dev/null -c "command" 会为命令分配一个伪终端
-        if command -v script >/dev/null; then
-             # Linux script syntax: script -q -c "command" /dev/null
-             script -q -c "claude $SKIP_PERMISSIONS_FLAG -p \"$PROMPT_CONTENT\"" /dev/null
+        # 前台启动 claude，输出到终端，强制行缓冲
+        # shellcheck disable=SC2086
+        if command -v stdbuf >/dev/null; then
+            stdbuf -oL -eL claude $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
         else
-             # Fallback if script is missing (unlikely on Linux)
-             claude $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
+            claude $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
         fi
         claude_exit_code=$?
         CLAUDE_PID=""
