@@ -6,7 +6,7 @@
 # 职责: 基础设施保障 + 流程编排 + 异常兜底
 # ==========================================
 
-set -euo pipefail  # 严格模式: 未定义变量/管道错误/命令失败立即退出
+set -euo pipefail  # 严格模式
 
 # -----------------------------------------
 # 配置区 (可环境变量覆盖)
@@ -249,27 +249,29 @@ main_loop() {
         log "========================================"
 
         # --- 前置终止检查 ---
-        check_termination
-        local term_status=$?
+        local term_status=0
+        check_termination || term_status=$?
 
-        case $term_status in
-            0)
-                log "🎉 所有任务已完成，正常退出"
-                exit 0
-                ;;
-            2)
-                fatal "系统处于阻塞状态，停止执行"
-                ;;
-        esac
+        if [ "$term_status" -eq 0 ]; then
+            log "🎉 所有任务已完成，正常退出"
+            exit 0
+        elif [ "$term_status" -eq 2 ]; then
+            fatal "系统处于阻塞状态，停止执行"
+        else
+            log "📋 仍有待办任务，继续执行..."
+        fi
 
         # --- 执行 Claude ---
         log "🤖 启动 Claude 执行单任务闭环..."
 
         # 使用 timeout 控制执行时间，并正确捕获退出码
-        set +e  # 临时关闭 errexit，以便捕获 timeout 退出码
-        timeout $SINGLE_TASK_TIMEOUT claude --dangerously-skip-permissions -p "$(cat "$PROMPT_FILE")" 2>&1 | tee -a "$LIVE_LOG"
-        claude_exit_code=$?
+        set +e  # 临时关闭 errexit
+        set +o pipefail  # 临时关闭 pipefail
+        PROMPT_CONTENT=$(cat "$PROMPT_FILE")
+        timeout $SINGLE_TASK_TIMEOUT claude -p "$PROMPT_CONTENT" 2>&1 | tee -a "$LIVE_LOG"
+        claude_exit_code=${PIPESTATUS[0]}
         set -e  # 恢复 errexit
+        set -o pipefail  # 恢复 pipefail
 
         # 分析 Claude 执行结果
         case $claude_exit_code in

@@ -1,0 +1,87 @@
++ MAX_ITERATIONS=50
++ PROMPT_FILE=.ai/cloud.md
++ TASK_FILE=.ai/task.json
++ PROGRESS_FILE=.ai/progress.txt
++ LIVE_LOG=.ai/live.log
++ BLOCKED_FLAG=.ai/.blocked
++ SINGLE_TASK_TIMEOUT=300
++ GIT_FALLBACK_MSG='chore: Auto-fallback by script'
++ GIT_MAX_RETRY=3
++ trap cleanup INT TERM
++ main_loop
++ init_environment
++ log '🚀 初始化 Claude 自动开发系统...'
+++ date '+%Y-%m-%d %H:%M:%S'
++ local 'msg=[2026-02-13 12:37:57] 🚀 初始化 Claude 自动开发系统...'
++ echo '[2026-02-13 12:37:57] 🚀 初始化 Claude 自动开发系统...'
++ tee -a .ai/live.log
+[2026-02-13 12:37:57] 🚀 初始化 Claude 自动开发系统...
++ check_cmd claude
++ command -v claude
++ check_cmd git
++ command -v git
++ check_cmd python3
++ command -v python3
++ '[' '!' -d .git ']'
++ git remote get-url origin
++ '[' '!' -f .ai/cloud.md ']'
++ mkdir -p .ai
++ python3 -m json.tool .ai/task.json
++ touch .ai/progress.txt .ai/live.log
++ '[' -f .ai/.blocked ']'
++ '[' -f .ai/progress.txt ']'
++ grep -q 'BLOCKED: NEED HUMAN HELP' .ai/progress.txt
++ log '✅ 环境检查通过，准备进入主循环'
+++ date '+%Y-%m-%d %H:%M:%S'
++ local 'msg=[2026-02-13 12:37:57] ✅ 环境检查通过，准备进入主循环'
++ echo '[2026-02-13 12:37:57] ✅ 环境检查通过，准备进入主循环'
++ tee -a .ai/live.log
+[2026-02-13 12:37:57] ✅ 环境检查通过，准备进入主循环
++ local iteration=0
++ local claude_exit_code=0
++ '[' 0 -lt 50 ']'
++ iteration=1
++ log ========================================
+++ date '+%Y-%m-%d %H:%M:%S'
++ local 'msg=[2026-02-13 12:37:57] ========================================'
++ echo '[2026-02-13 12:37:57] ========================================'
++ tee -a .ai/live.log
+[2026-02-13 12:37:57] ========================================
++ log '🔄 第 1/50 轮迭代开始'
+++ date '+%Y-%m-%d %H:%M:%S'
++ local 'msg=[2026-02-13 12:37:57] 🔄 第 1/50 轮迭代开始'
++ echo '[2026-02-13 12:37:57] 🔄 第 1/50 轮迭代开始'
++ tee -a .ai/live.log
+[2026-02-13 12:37:57] 🔄 第 1/50 轮迭代开始
++ log ========================================
+++ date '+%Y-%m-%d %H:%M:%S'
++ local 'msg=[2026-02-13 12:37:57] ========================================'
++ tee -a .ai/live.log
++ echo '[2026-02-13 12:37:57] ========================================'
+[2026-02-13 12:37:57] ========================================
++ check_termination
++ '[' -f .ai/.blocked ']'
++ '[' -f .ai/progress.txt ']'
++ grep -q 'BLOCKED: NEED HUMAN HELP' .ai/progress.txt
++ '[' -f .ai/progress.txt ']'
++ grep -q 'ALL TASKS COMPLETED' .ai/progress.txt
++ '[' -f .ai/task.json ']'
+++ python3 -c '
+import json,sys
+try:
+    with open('\''.ai/task.json'\'','\''r'\'') as f:
+        data=json.load(f)
+        # 支持两种格式: 直接数组 或 对象包含tasks键
+        if isinstance(data, list):
+            tasks = data
+        else:
+            tasks = data.get('\''tasks'\'', [])
+        pending = [t for t in tasks if not t.get('\''completed'\'', False)]
+        print(len(pending))
+except Exception as e:
+    print('\''error'\'')
+'
++ local pending_tasks=8
++ '[' 8 = 0 ']'
++ '[' 8 = error ']'
++ return 1
