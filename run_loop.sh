@@ -106,6 +106,13 @@ init_environment() {
     log "🚀 初始化 Claude 自动开发系统..."
 
     # 1. 检查核心依赖
+    # 强制使用 nvm 切换到 v20 (如果可用)
+    if [ -s "$HOME/.nvm/nvm.sh" ]; then
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+        nvm use 20 >/dev/null 2>&1 || true
+    fi
+    
     check_cmd claude
     check_cmd git
     check_cmd python3  # 用于 JSON 验证
