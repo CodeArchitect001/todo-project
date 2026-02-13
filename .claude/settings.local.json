@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create vite:*)",
+      "Bash(npm install:*)",
+      "Bash(npm init:*)",
+      "Bash(timeout 5 npm start:*)",
+      "Bash(timeout 5 npm run:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(node migrate.js:*)",
+      "Bash(node:*)"
+    ]
+  }
+}

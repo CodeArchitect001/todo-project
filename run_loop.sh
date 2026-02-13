@@ -25,24 +25,17 @@ log() {
 # -----------------------------------------
 # 运行时检测
 # -----------------------------------------
-RUNTIME_NODE="$PWD/.ai/runtime/node/bin/node"
-RUNTIME_CLI="$PWD/.ai/runtime/node/lib/node_modules/@anthropic-ai/claude-code/cli.js"
-
-if [ -x "$RUNTIME_NODE" ] && [ -f "$RUNTIME_CLI" ]; then
-    NODE_BIN="$RUNTIME_NODE"
-    CLAUDE_CLI="$RUNTIME_CLI"
-    # 添加到 PATH 以便子进程也能用
-    export PATH="$PWD/.ai/runtime/node/bin:$PATH"
-    log "✅ 使用本地 Node.js 运行时: $RUNTIME_NODE"
+# 优先使用 claude-kimi，其次是 claude
+if command -v claude-kimi >/dev/null; then
+    CLAUDE_CMD="claude-kimi"
+    log "✅ 使用 claude-kimi: $(which claude-kimi)"
+elif command -v claude >/dev/null; then
+    CLAUDE_CMD="claude"
+    log "ℹ️ 使用系统 claude 命令"
 else
-    # 回退到系统环境
-    NODE_BIN="node"
-    if command -v npm >/dev/null; then
-        CLAUDE_CLI="$(npm root -g)/@anthropic-ai/claude-code/cli.js"
-    else
-        CLAUDE_CLI="/usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js"
-    fi
-    log "ℹ️ 使用系统 Node.js 运行时"
+    # 无法继续
+    log "❌ 找不到 claude-kimi 或 claude 命令"
+    exit 1
 fi
 
 # -----------------------------------------
@@ -129,10 +122,7 @@ init_environment() {
     log "🚀 初始化 Claude 自动开发系统..."
 
     # 1. 检查核心依赖
-    # 如果使用本地运行时，跳过系统命令检查
-    if [ "$NODE_BIN" = "node" ]; then
-        check_cmd claude
-    fi
+    check_cmd "$CLAUDE_CMD"
     check_cmd git
     check_cmd python3  # 用于 JSON 验证
     check_cmd timeout  # 防止任务死锁
@@ -353,12 +343,10 @@ main_loop() {
         # 前台启动 claude，输出到终端，强制行缓冲
         # shellcheck disable=SC2086
         if command -v stdbuf >/dev/null; then
-             # stdbuf 对命令解析较弱，这里直接调用，不通过 stdbuf 包装 node，
-             # 而是尝试通过环境变量控制 buffering (虽然 node 对此支持有限，但能规避 126 错误)
-             # 或者，我们放弃 stdbuf 包装，因为 node 交互式输出通常不需要它
-            "$NODE_BIN" "$CLAUDE_CLI" $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
+             # stdbuf 优化输出缓冲
+            stdbuf -oL -eL "$CLAUDE_CMD" $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
         else
-            "$NODE_BIN" "$CLAUDE_CLI" $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
+            "$CLAUDE_CMD" $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
         fi
         claude_exit_code=$?
         CLAUDE_PID=""
