@@ -316,10 +316,17 @@ main_loop() {
         PROMPT_CONTENT=$(cat "$PROMPT_FILE")
 
         log "⏳ Claude 正在运行，请完成当前任务..."
+        log "💡 提示：如果长时间无输出，请尝试输入 'y' 并回车（可能是权限确认提示）"
         echo "========================================"
-        # 前台启动 claude，输出到终端
-        # shellcheck disable=SC2086
-        claude $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
+        # 使用 script 命令伪造 TTY，强制 Claude 认为是在交互式终端中运行
+        # script -q /dev/null -c "command" 会为命令分配一个伪终端
+        if command -v script >/dev/null; then
+             # Linux script syntax: script -q -c "command" /dev/null
+             script -q -c "claude $SKIP_PERMISSIONS_FLAG -p \"$PROMPT_CONTENT\"" /dev/null
+        else
+             # Fallback if script is missing (unlikely on Linux)
+             claude $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
+        fi
         claude_exit_code=$?
         CLAUDE_PID=""
         echo "========================================"
