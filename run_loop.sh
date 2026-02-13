@@ -9,6 +9,49 @@
 # 清理可能干扰的环境变量
 unset CLAUDECODE 2>/dev/null || true
 
+# 带时间戳的日志（提前定义，以便后续使用）
+LIVE_LOG="${LIVE_LOG:-.ai/live.log}"
+log() {
+    local msg="[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    echo "$msg" | tee -a "$LIVE_LOG"
+}
+
+# -----------------------------------------
+# 权限模式检测（root vs 普通用户）
+# -----------------------------------------
+SKIP_PERMISSIONS_FLAG=""
+
+if [ "$(id -u)" -eq 0 ]; then
+    # root 用户
+    echo "⚠️ 检测到 root 用户，Claude Code 不支持 --dangerously-skip-permissions 参数"
+    echo "⚠️ 请确保在提示词中已包含自动授权指令，否则可能会卡住等待用户输入"
+    SKIP_PERMISSIONS_FLAG=""
+else
+    # 普通用户，询问是否启用
+    echo ""
+    echo "========================================"
+    echo "Claude 自动开发循环脚本"
+    echo "========================================"
+    echo ""
+    echo "检测到当前为普通用户 ($(whoami))"
+    echo ""
+    echo "是否启用 --dangerously-skip-permissions 模式？"
+    echo "  [Y] 是 - 自动跳过所有权限确认（推荐用于自动化）"
+    echo "  [N] 否 - 每次文件操作都需人工确认（更安全）"
+    echo ""
+    read -rp "请选择 [Y/N，默认 Y]: " choice
+    choice=${choice:-Y}
+
+    if [[ "$choice" =~ ^[Yy]$ ]]; then
+        SKIP_PERMISSIONS_FLAG="--dangerously-skip-permissions"
+        echo "✅ 已启用自动权限跳过模式"
+    else
+        SKIP_PERMISSIONS_FLAG=""
+        echo "ℹ️ 使用人工确认模式"
+    fi
+    echo ""
+fi
+
 set -euo pipefail  # 严格模式
 
 # -----------------------------------------
@@ -18,7 +61,6 @@ MAX_ITERATIONS=${MAX_ITERATIONS:-50}          # 安全上限
 PROMPT_FILE="${PROMPT_FILE:-.ai/cloud.md}"    # 提示词文件路径
 TASK_FILE="${TASK_FILE:-.ai/task.json}"       # 任务清单路径
 PROGRESS_FILE="${PROGRESS_FILE:-.ai/progress.txt}"
-LIVE_LOG="${LIVE_LOG:-.ai/live.log}"
 BLOCKED_FLAG="${BLOCKED_FLAG:-.ai/.blocked}"  # 阻塞标记文件(隐藏文件)
 SINGLE_TASK_TIMEOUT=${SINGLE_TASK_TIMEOUT:-300} # 5分钟超时
 
@@ -29,12 +71,6 @@ GIT_MAX_RETRY=3
 # -----------------------------------------
 # 工具函数
 # -----------------------------------------
-
-# 带时间戳的日志
-log() {
-    local msg="[$(date '+%Y-%m-%d %H:%M:%S')] $1"
-    echo "$msg" | tee -a "$LIVE_LOG"
-}
 
 # 错误日志
 error() {
@@ -272,7 +308,8 @@ main_loop() {
         PROMPT_CONTENT=$(cat "$PROMPT_FILE")
 
         # 后台启动 claude
-        claude -p "$PROMPT_CONTENT" >> "$LIVE_LOG" 2>&1 &
+        # shellcheck disable=SC2086
+        claude $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT" >> "$LIVE_LOG" 2>&1 &
         local claude_pid=$!
 
         # 等待最多 SINGLE_TASK_TIMEOUT 秒
