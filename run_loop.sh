@@ -23,6 +23,29 @@ log() {
 }
 
 # -----------------------------------------
+# 运行时检测
+# -----------------------------------------
+RUNTIME_NODE="$PWD/.ai/runtime/node/bin/node"
+RUNTIME_CLI="$PWD/.ai/runtime/node/lib/node_modules/@anthropic-ai/claude-code/cli.js"
+
+if [ -x "$RUNTIME_NODE" ] && [ -f "$RUNTIME_CLI" ]; then
+    NODE_BIN="$RUNTIME_NODE"
+    CLAUDE_CLI="$RUNTIME_CLI"
+    # 添加到 PATH 以便子进程也能用
+    export PATH="$PWD/.ai/runtime/node/bin:$PATH"
+    log "✅ 使用本地 Node.js 运行时: $RUNTIME_NODE"
+else
+    # 回退到系统环境
+    NODE_BIN="node"
+    if command -v npm >/dev/null; then
+        CLAUDE_CLI="$(npm root -g)/@anthropic-ai/claude-code/cli.js"
+    else
+        CLAUDE_CLI="/usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js"
+    fi
+    log "ℹ️ 使用系统 Node.js 运行时"
+fi
+
+# -----------------------------------------
 # 权限模式检测（root vs 普通用户）
 # -----------------------------------------
 SKIP_PERMISSIONS_FLAG=""
@@ -106,14 +129,10 @@ init_environment() {
     log "🚀 初始化 Claude 自动开发系统..."
 
     # 1. 检查核心依赖
-    # 强制使用 nvm 切换到 v20 (如果可用)
-    if [ -s "$HOME/.nvm/nvm.sh" ]; then
-        export NVM_DIR="$HOME/.nvm"
-        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-        nvm use 20 >/dev/null 2>&1 || true
+    # 如果使用本地运行时，跳过系统命令检查
+    if [ "$NODE_BIN" = "node" ]; then
+        check_cmd claude
     fi
-    
-    check_cmd claude
     check_cmd git
     check_cmd python3  # 用于 JSON 验证
     check_cmd timeout  # 防止任务死锁
@@ -334,9 +353,9 @@ main_loop() {
         # 前台启动 claude，输出到终端，强制行缓冲
         # shellcheck disable=SC2086
         if command -v stdbuf >/dev/null; then
-            stdbuf -oL -eL node "$(npm root -g)/@anthropic-ai/claude-code/cli.js" $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
+            stdbuf -oL -eL "$NODE_BIN" "$CLAUDE_CLI" $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
         else
-            node "$(npm root -g)/@anthropic-ai/claude-code/cli.js" $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
+            "$NODE_BIN" "$CLAUDE_CLI" $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
         fi
         claude_exit_code=$?
         CLAUDE_PID=""
