@@ -110,9 +110,9 @@ init_environment() {
         fatal "当前目录不是 Git 仓库 (缺少 .git 目录)"
     fi
 
-    # 3. 检查远程仓库关联
+    # 3. 检查远程仓库关联 (允许本地运行)
     if ! git remote get-url origin &>/dev/null; then
-        fatal "Git 未关联远程仓库 (origin)"
+        log "⚠️ Git 未关联远程仓库 (origin)，将仅在本地运行"
     fi
 
     # 4. 检查提示词文件
@@ -240,28 +240,35 @@ git_fallback() {
     fi
 
     # 推送重试逻辑
-    local retry=0
-    while [ $retry -lt $GIT_MAX_RETRY ]; do
-        if git push 2>&1 | log_stream; then
-            log "✅ Git 推送成功"
+    if git remote get-url origin &>/dev/null; then
+        local retry=0
+        while [ $retry -lt $GIT_MAX_RETRY ]; do
+            if git push 2>&1 | log_stream; then
+                log "✅ Git 推送成功"
+                return 0
+            fi
+
+            retry=$((retry + 1))
+            if [ $retry -lt $GIT_MAX_RETRY ]; then
+                log "⏳ 推送失败，${retry}/${GIT_MAX_RETRY} 秒后重试..."
+                sleep $((retry * 2))  # 指数退避
+            fi
+        done
+
+        # 尝试 fallback 分支推送
+        log "⚠️ 标准推送失败，尝试设置上游分支..."
+        if git push -u origin HEAD 2>&1 | log_stream; then
+            log "✅ Git 推送成功 (使用 -u origin HEAD)"
             return 0
         fi
 
-        retry=$((retry + 1))
-        if [ $retry -lt $GIT_MAX_RETRY ]; then
-            log "⏳ 推送失败，${retry}/${GIT_MAX_RETRY} 秒后重试..."
-            sleep $((retry * 2))  # 指数退避
-        fi
-    done
-
-    # 尝试 fallback 分支推送
-    log "⚠️ 标准推送失败，尝试设置上游分支..."
-    if git push -u origin HEAD 2>&1 | log_stream; then
-        log "✅ Git 推送成功 (使用 -u origin HEAD)"
+        error "Git push 连续 ${GIT_MAX_RETRY} 次失败"
+        # 本地提交成功也算成功，不中断流程
+        return 0
+    else
+        log "ℹ️ 未配置远程仓库，跳过推送"
         return 0
     fi
-
-    fatal "Git push 连续 ${GIT_MAX_RETRY} 次失败"
 }
 
 # 辅助：将标准输出同时传给 log 函数
