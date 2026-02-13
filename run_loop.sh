@@ -6,6 +6,9 @@
 # 职责: 基础设施保障 + 流程编排 + 异常兜底
 # ==========================================
 
+# 清理可能干扰的环境变量
+unset CLAUDECODE 2>/dev/null || true
+
 set -euo pipefail  # 严格模式
 
 # -----------------------------------------
@@ -264,14 +267,12 @@ main_loop() {
         # --- 执行 Claude ---
         log "🤖 启动 Claude 执行单任务闭环..."
 
-        # 使用 timeout 控制执行时间，并正确捕获退出码
+        # 使用 timeout 控制执行时间（--foreground 确保信号能传递）
         set +e  # 临时关闭 errexit
-        set +o pipefail  # 临时关闭 pipefail
         PROMPT_CONTENT=$(cat "$PROMPT_FILE")
-        timeout $SINGLE_TASK_TIMEOUT claude -p "$PROMPT_CONTENT" 2>&1 | tee -a "$LIVE_LOG"
-        claude_exit_code=${PIPESTATUS[0]}
+        timeout --foreground $SINGLE_TASK_TIMEOUT claude -p "$PROMPT_CONTENT" >> "$LIVE_LOG" 2>&1
+        claude_exit_code=$?
         set -e  # 恢复 errexit
-        set -o pipefail  # 恢复 pipefail
 
         # 分析 Claude 执行结果
         case $claude_exit_code in
