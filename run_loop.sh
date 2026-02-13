@@ -1,47 +1,62 @@
 #!/bin/bash
 
 # ==========================================
-# Claude 自动开发循环脚本
+# Claude 全自动开发循环脚本 (最终修复版)
 # ==========================================
 
-# 最大循环次数（防止死循环）
-MAX_ITERATIONS=20
-TASK_FILE=".ai/task.json"
-PROGRESS_FILE=".ai/progress.txt"
-PROMPT_FILE=".ai/cloud.md"
+# 配置项
+MAX_ITERATIONS=20           # 最大循环次数
+PROMPT_FILE=".ai/cloud.md"  # 提示词文件
+PROGRESS_FILE=".ai/progress.txt" # 进度日志
+LIVE_LOG=".ai/live.log"     # 实时详细日志
+SINGLE_TASK_TIMEOUT=300     # 单个任务超时时间(秒)，防止卡死
 
 echo "🚀 启动 Claude 自动开发系统..."
+echo "👀 监控模式：请使用 tail -f .ai/live.log 查看实时详情"
 
-# 检查文件是否存在
+# 初始化日志文件
+touch "$LIVE_LOG"
+touch "$PROGRESS_FILE"
+
+# 检查提示词文件
 if [ ! -f "$PROMPT_FILE" ]; then
     echo "❌ 错误：找不到提示词文件 $PROMPT_FILE"
     exit 1
 fi
 
 for ((i=1; i<=$MAX_ITERATIONS; i++)); do
-    echo "=== 🔄 第 $i 轮迭代开始 ==="
+    echo "=== 🔄 第 $i 轮迭代开始 ===" | tee -a "$LIVE_LOG"
     
-    # 核心命令：通过管道将提示词传给 Claude
-    # claude 会读取指令，执行操作（读写文件、运行测试），然后退出
-    # 这里假设你已经安装并配置好了 claude CLI
-    cat "$PROMPT_FILE" | claude
+    # 核心执行命令
+    # 1. < "$PROMPT_FILE": 解决"不退出"问题，强制输入结束符
+    # 2. --dangerously-skip-permissions: 解决"要权限"问题，全自动运行
+    # 3. timeout 300: 解决"卡死"问题，超时强制进入下一轮
+    # 4. 2>&1 | tee -a: 解决"看不了日志"问题，实时记录所有输出
+    timeout $SINGLE_TASK_TIMEOUT claude --dangerously-skip-permissions < "$PROMPT_FILE" 2>&1 | tee -a "$LIVE_LOG"
+    
+    # 捕获退出状态
+    EXIT_CODE=${PIPESTATUS[0]}
+
+    # 如果是超时退出 (Exit Code 124)
+    if [ $EXIT_CODE -eq 124 ]; then
+        echo "⚠️ 任务执行超时，强制进入下一轮..." | tee -a "$LIVE_LOG"
+    fi
 
     # 检查是否所有任务已完成
-    # 如果 progress.txt 中出现了我们约定的结束信号
     if grep -q "ALL TASKS COMPLETED" "$PROGRESS_FILE"; then
-        echo ""
-        echo "✅ ✅ ✅  检测到完成信号！项目开发结束。 ✅ ✅ ✅"
+        echo "" | tee -a "$LIVE_LOG"
+        echo "✅ ✅ ✅  检测到完成信号！项目开发结束。 ✅ ✅ ✅" | tee -a "$LIVE_LOG"
         exit 0
     fi
     
-    # 检查是否遇到无法处理的错误（可选）
+    # 检查是否遇到阻塞
     if grep -q "BLOCKED: NEED HUMAN HELP" "$PROGRESS_FILE"; then
-        echo "⚠️ AI 遇到阻碍，请求人工介入。请查看 $PROGRESS_FILE 详情。"
+        echo "⚠️ AI 遇到阻碍，请求人工介入。请查看 $PROGRESS_FILE 详情。" | tee -a "$LIVE_LOG"
         exit 1
     fi
 
-    echo "⏳ 等待 3 秒后进入下一轮..."
-    sleep 3
+    echo "⏳ 等待 2 秒后进入下一轮..." | tee -a "$LIVE_LOG"
+    sleep 2
 done
 
-echo "⚠️ 达到最大迭代次数 ($MAX_ITERATIONS)，任务可能未全部完成。"
+echo "⚠️ 达到最大迭代次数 ($MAX_ITERATIONS)，任务可能未全部完成。" | tee -a "$LIVE_LOG"
