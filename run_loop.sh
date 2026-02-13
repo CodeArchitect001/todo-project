@@ -319,9 +319,7 @@ main_loop() {
         echo "========================================"
         # 前台启动 claude，输出到终端
         # shellcheck disable=SC2086
-        claude $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT" &
-        CLAUDE_PID=$!
-        wait $CLAUDE_PID
+        claude $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
         claude_exit_code=$?
         CLAUDE_PID=""
         echo "========================================"
