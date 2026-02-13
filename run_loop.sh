@@ -11,7 +11,7 @@ unset CLAUDECODE 2>/dev/null || true
 
 # 加载环境变量 (如果有)
 if [ -f .env ]; then
-    source .env
+    source "./.env"
 fi
 
 
