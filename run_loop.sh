@@ -24,7 +24,7 @@ SKIP_PERMISSIONS_FLAG=""
 if [ "$(id -u)" -eq 0 ]; then
     # root 用户
     echo "⚠️ 检测到 root 用户，Claude Code 不支持 --dangerously-skip-permissions 参数"
-    echo "⚠️ 请确保在提示词中已包含自动授权指令，否则可能会卡住等待用户输入"
+    echo "⚠️ 自动模式将在无权限跳过的情况下运行，您可能需要手动批准操作"
     SKIP_PERMISSIONS_FLAG=""
 else
     # 普通用户，询问是否启用
@@ -103,6 +103,7 @@ init_environment() {
     check_cmd claude
     check_cmd git
     check_cmd python3  # 用于 JSON 验证
+    check_cmd timeout  # 防止任务死锁
 
     # 2. 检查 Git 仓库
     if [ ! -d ".git" ]; then
@@ -311,8 +312,11 @@ main_loop() {
         echo "========================================"
         # 前台启动 claude，输出到终端
         # shellcheck disable=SC2086
-        claude $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
+        claude $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT" &
+        CLAUDE_PID=$!
+        wait $CLAUDE_PID
         claude_exit_code=$?
+        CLAUDE_PID=""
         echo "========================================"
         log "Claude 执行结束，退出码: $claude_exit_code"
 
@@ -375,7 +379,10 @@ main_loop() {
 # -----------------------------------------
 cleanup() {
     log "🛑 接收到中断信号，正在清理..."
-    # 可选: 在这里执行紧急提交
+    if [ -n "${CLAUDE_PID:-}" ]; then
+        log "🔪 强制终止 Claude 进程 (PID: $CLAUDE_PID)..."
+        kill "$CLAUDE_PID" 2>/dev/null || true
+    fi
     exit 130
 }
 
