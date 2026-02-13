@@ -267,11 +267,34 @@ main_loop() {
         # --- 执行 Claude ---
         log "🤖 启动 Claude 执行单任务闭环..."
 
-        # 使用 timeout 控制执行时间（--foreground 确保信号能传递）
+        # 执行 Claude（后台运行，手动超时控制）
         set +e  # 临时关闭 errexit
         PROMPT_CONTENT=$(cat "$PROMPT_FILE")
-        timeout --foreground $SINGLE_TASK_TIMEOUT claude -p "$PROMPT_CONTENT" >> "$LIVE_LOG" 2>&1
-        claude_exit_code=$?
+
+        # 后台启动 claude
+        claude -p "$PROMPT_CONTENT" >> "$LIVE_LOG" 2>&1 &
+        local claude_pid=$!
+
+        # 等待最多 SINGLE_TASK_TIMEOUT 秒
+        local wait_count=0
+        while kill -0 $claude_pid 2>/dev/null; do
+            if [ $wait_count -ge $SINGLE_TASK_TIMEOUT ]; then
+                log "⏱️ Claude 执行超时，终止进程..."
+                kill -9 $claude_pid 2>/dev/null
+                wait $claude_pid 2>/dev/null
+                claude_exit_code=124
+                break
+            fi
+            sleep 1
+            wait_count=$((wait_count + 1))
+        done
+
+        # 如果正常结束，获取退出码
+        if [ -z "${claude_exit_code:-}" ]; then
+            wait $claude_pid
+            claude_exit_code=$?
+        fi
+
         set -e  # 恢复 errexit
 
         # 分析 Claude 执行结果
