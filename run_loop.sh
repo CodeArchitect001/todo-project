@@ -307,9 +307,9 @@ main_loop() {
         set +e  # 临时关闭 errexit
         PROMPT_CONTENT=$(cat "$PROMPT_FILE")
 
-        # 后台启动 claude（保留认证但清除嵌套检测变量）
+        # 后台启动 claude（提示词中已包含自动授权指令）
         # shellcheck disable=SC2086
-        (unset CLAUDECODE; claude $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT" >> "$LIVE_LOG" 2>&1) &
+        claude $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT" >> "$LIVE_LOG" 2>&1 &
         local claude_pid=$!
 
         # 等待最多 SINGLE_TASK_TIMEOUT 秒
