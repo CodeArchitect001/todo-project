@@ -334,9 +334,9 @@ main_loop() {
         # 前台启动 claude，输出到终端，强制行缓冲
         # shellcheck disable=SC2086
         if command -v stdbuf >/dev/null; then
-            stdbuf -oL -eL claude $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
+            stdbuf -oL -eL node "$(npm root -g)/@anthropic-ai/claude-code/cli.js" $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
         else
-            claude $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
+            node "$(npm root -g)/@anthropic-ai/claude-code/cli.js" $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
         fi
         claude_exit_code=$?
         CLAUDE_PID=""
