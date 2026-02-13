@@ -21,7 +21,7 @@
       "能通过简单脚本或工具手动插入一条测试数据"
     ],
     "priority": 2,
-    "completed": false
+    "completed": true
   },
   {
     "id": "T3",
