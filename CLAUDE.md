@@ -42,7 +42,7 @@
 
 ### 环境适配
 
-- **命令检测**：优先使用 `claude-kimi`，其次 `claude`
+- **命令检测**：使用 `claude` 命令
 - **权限模式**：
   - **root 用户**：不支持 `--dangerously-skip-permissions`
   - **普通用户**：可选择自动跳过或手动确认

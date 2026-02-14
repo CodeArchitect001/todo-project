@@ -25,16 +25,13 @@ log() {
 # -----------------------------------------
 # 运行时检测
 # -----------------------------------------
-# 优先使用 claude-kimi，其次是 claude
-if command -v claude-kimi >/dev/null; then
-    CLAUDE_CMD="claude-kimi"
-    log "✅ 使用 claude-kimi: $(which claude-kimi)"
-elif command -v claude >/dev/null; then
+# 使用 claude 命令
+if command -v claude >/dev/null; then
     CLAUDE_CMD="claude"
-    log "ℹ️ 使用系统 claude 命令"
+    log "✅ 使用 claude: $(which claude)"
 else
     # 无法继续
-    log "❌ 找不到 claude-kimi 或 claude 命令"
+    log "❌ 找不到 claude 命令"
     exit 1
 fi
 
@@ -337,19 +334,13 @@ main_loop() {
         set +e  # 临时关闭 errexit
         PROMPT_CONTENT=$(cat "$PROMPT_FILE")
 
-        log "⏳ Claude 正在运行，请完成当前任务..."
+        log "⏳ Claude 正在运行 (超时: ${SINGLE_TASK_TIMEOUT}秒)..."
         log "💡 提示：如果长时间无输出，请尝试输入 'y' 并回车（可能是权限确认提示）"
         echo "========================================"
-        # 前台启动 claude，输出到终端，强制行缓冲
+        # 前台启动 claude，使用 timeout 实现超时保护
         # shellcheck disable=SC2086
-        if command -v stdbuf >/dev/null; then
-             # stdbuf 优化输出缓冲
-            stdbuf -oL -eL "$CLAUDE_CMD" $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
-        else
-            "$CLAUDE_CMD" $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
-        fi
+        timeout "$SINGLE_TASK_TIMEOUT" "$CLAUDE_CMD" $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
         claude_exit_code=$?
-        CLAUDE_PID=""
         echo "========================================"
         log "Claude 执行结束，退出码: $claude_exit_code"
 
@@ -412,10 +403,7 @@ main_loop() {
 # -----------------------------------------
 cleanup() {
     log "🛑 接收到中断信号，正在清理..."
-    if [ -n "${CLAUDE_PID:-}" ]; then
-        log "🔪 强制终止 Claude 进程 (PID: $CLAUDE_PID)..."
-        kill "$CLAUDE_PID" 2>/dev/null || true
-    fi
+    # timeout 会自动处理子进程，无需手动 kill
     exit 130
 }
 
