@@ -156,6 +156,21 @@ rm .ai/.blocked
 sed -i '/BLOCKED: NEED HUMAN HELP/d' .ai/progress.txt
 ```
 
+### 重置任务（重新测试）
+
+当需要重新测试某个任务时，**必须同时执行以下两步**：
+
+```bash
+# 1. 修改 task.json，将目标任务的 completed 改为 false
+
+# 2. 清理 progress.txt 中的完成信号（重要！）
+> .ai/progress.txt   # 清空整个文件
+# 或者只删除完成信号
+sed -i '/ALL TASKS COMPLETED/d' .ai/progress.txt
+```
+
+> **注意**：如果只修改 `task.json` 而不清理 `progress.txt`，脚本会检测到 `ALL TASKS COMPLETED` 信号并直接退出，不会重新执行任务。
+
 ### 查看日志
 
 ```bash
