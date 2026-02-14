@@ -1,134 +1,158 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
-这是一个基于 React + Express + SQLite 的全栈待办事项 Web 应用。项目采用任务驱动开发模式，通过 `.ai/task.json` 管理开发任务。
+**核心目的**：开发实现 Claude 全自动开发循环脚本 (`run_loop.sh`)，实现任务驱动的自动化开发流程。
 
-## Project Structure
+待办事项应用 (React + Express + SQLite) 仅作为**演示/测试用例**，用于验证自动化脚本的功能。
 
+---
+
+## 核心组件
+
+### 1. 自动化脚本 (`run_loop.sh`)
+
+- **版本**：v2.1
+- **职责**：基础设施保障 + 流程编排 + 异常兜底
+- **核心流程**：
+  ```
+  环境检测 → 初始化检查 → 终止检查 → 执行 Claude → Git 兜底 → 终止检查 → 下一轮
+  ```
+
+### 2. 任务管理系统 (`.ai/`)
+
+| 文件 | 用途 |
+|------|------|
+| `task.json` | 开发任务列表，按 `priority` 排序 |
+| `cloud.md` | Claude 工作指令集（MECE 原则） |
+| `progress.txt` | 任务完成进度日志 |
+| `.blocked` | 阻塞标记文件（隐藏） |
+| `live.log` | 实时运行日志 |
+
+### 3. 终止检测机制 (MECE 原则)
+
+- 检测 `.ai/.blocked` 文件
+- 检测 `progress.txt` 中的 `BLOCKED: NEED HUMAN HELP`
+- 检测 `ALL TASKS COMPLETED` 信号
+- 检查 `task.json` 待办任务数量
+
+---
+
+## 脚本特性
+
+### 环境适配
+
+- **命令检测**：优先使用 `claude-kimi`，其次 `claude`
+- **权限模式**：
+  - **root 用户**：不支持 `--dangerously-skip-permissions`
+  - **普通用户**：可选择自动跳过或手动确认
+
+### 安全保障
+
+- `set -euo pipefail` 严格模式
+- 单任务超时保护（默认 5 分钟）
+- 最大迭代次数限制（默认 50）
+- 阻塞状态立即停止
+
+### Git 兜底机制
+
+- 每轮迭代后自动提交未保存更改
+- 推送失败重试 3 次（指数退避）
+- 幂等设计（支持从失败恢复）
+
+---
+
+## 使用方式
+
+### 交互式运行（推荐）
+
+```bash
+bash run_loop.sh
 ```
-.
-├── frontend/          # React 前端 (Vite)
-│   ├── package.json   # 前端依赖和脚本
-│   └── ...
-├── backend/           # Express 后端
-│   ├── package.json   # 后端依赖和脚本
-│   ├── index.js       # 服务入口
-│   ├── database.js    # SQLite 数据库连接和工具函数
-│   ├── migrate.js     # 数据库迁移脚本
-│   ├── seed.js        # 测试数据种子
-│   └── todos.db       # SQLite 数据库文件
-├── .ai/               # AI 任务管理
-│   ├── task.json      # 任务列表 (开发蓝图)
-│   ├── cloud.md       # Claude 自动开发提示词
-│   └── live.log       # 运行日志
-└── run_loop.sh        # 自动化开发脚本
+
+### 非交互式运行
+
+```bash
+# 普通用户自动跳过权限
+MAX_ITERATIONS=100 SKIP_PERMISSIONS_FLAG="--dangerously-skip-permissions" bash run_loop.sh
+
+# root 用户运行（无权限跳过）
+sudo bash run_loop.sh
 ```
 
-## Common Commands
+---
 
-### Frontend Development
+## 演示用例：待办事项应用
+
+为验证脚本功能，项目中包含一个全栈待办事项应用作为测试目标：
+
+### 前端 (React + Vite)
 
 ```bash
 cd frontend
-npm install        # 安装依赖
-npm run dev        # 启动开发服务器 (http://localhost:5173)
-npm run build      # 生产构建
-npm run lint       # ESLint 检查
+npm run dev    # http://localhost:5173
+npm run build
 ```
 
-### Backend Development
+### 后端 (Express + SQLite)
 
 ```bash
 cd backend
-npm install        # 安装依赖
-npm start          # 启动服务 (http://localhost:3000)
-node migrate.js    # 运行数据库迁移
-node seed.js       # 填充测试数据
+npm start      # http://localhost:3000
+node migrate.js
+node seed.js
 ```
 
-### Automated Development
+---
+
+## 关键配置项
+
+| 环境变量 | 默认值 | 说明 |
+|----------|--------|------|
+| `MAX_ITERATIONS` | 50 | 最大迭代次数 |
+| `PROMPT_FILE` | `.ai/task.json` | 任务清单路径 |
+| `SINGLE_TASK_TIMEOUT` | 300 | 单任务超时（秒） |
+| `GIT_MAX_RETRY` | 3 | Git 推送重试次数 |
+
+---
+
+## 开发蓝图示例 (`.ai/task.json`)
+
+```json
+[
+  {
+    "id": "T1",
+    "title": "初始化项目结构",
+    "description": "创建项目文件夹，初始化前后端项目",
+    "acceptance_criteria": ["前端可启动", "后端可启动"],
+    "priority": 1,
+    "completed": true
+  }
+]
+```
+
+---
+
+## 故障排查
+
+### 脚本阻塞
 
 ```bash
-# 交互式运行（推荐用于开发）
-bash run_loop.sh
+# 检查阻塞文件
+cat .ai/.blocked
+cat .ai/progress.txt | grep BLOCKED
 
-# 非 root 用户可选择启用 --dangerously-skip-permissions 模式
-# root 用户无法使用自动权限跳过模式
+# 清理阻塞标记（手动修复后）
+rm .ai/.blocked
+sed -i '/BLOCKED: NEED HUMAN HELP/d' .ai/progress.txt
 ```
 
-## Architecture
+### 查看日志
 
-### Frontend
+```bash
+# 实时日志
+tail -f .ai/live.log
 
-- **Framework**: React 19 + Vite
-- **Module System**: ES Modules (`"type": "module"`)
-- **Dev Server**: Vite dev server on port 5173
-- **Linting**: ESLint with react-hooks and react-refresh plugins
-
-### Backend
-
-- **Framework**: Express 5
-- **Module System**: CommonJS (`"type": "commonjs"`)
-- **Database**: SQLite3 with Promise 包装器
-- **CORS**: 已启用，支持跨域请求
-- **Port**: 3000 (可通过 `PORT` 环境变量覆盖)
-
-### Database Layer (`backend/database.js`)
-
-提供了 Promise 化的 SQLite 操作工具：
-
-- `db` - SQLite 数据库连接实例
-- `initDatabase()` - 初始化 todos 表
-- `runQuery(sql, params)` - 执行 INSERT/UPDATE/DELETE，返回 `{id, changes}`
-- `allQuery(sql, params)` - 执行 SELECT，返回所有行
-- `getQuery(sql, params)` - 执行 SELECT，返回单行
-
-### API Endpoints (已规划)
-
-- `GET /api/health` - 健康检查
-- `GET /api/todos` - 获取所有待办事项
-- `POST /api/todos` - 创建待办事项
-- `PATCH /api/todos/:id` - 更新待办事项
-- `DELETE /api/todos/:id` - 删除待办事项
-
-## Task-Driven Development Workflow
-
-本项目使用 `.ai/task.json` 作为开发蓝图：
-
-1. **任务格式**: 每个任务包含 `id`, `title`, `description`, `acceptance_criteria`, `priority`, `completed`
-2. **优先级**: `priority` 数值越小优先级越高
-3. **工作流程**:
-   - 读取 `.ai/task.json`
-   - 选择 `completed: false` 且 `priority` 最小的任务
-   - 实现功能
-   - 标记 `completed: true`
-   - Git commit: `feat: 完成任务T#[ID] - [描述]`
-
-### Claude Settings
-
-项目配置了 `.claude/settings.local.json`，预授权了常用命令：
-- npm 相关命令 (create, install, init)
-- Git 操作 (add, commit)
-- Node 脚本执行
-
-### Automated Loop (`run_loop.sh`)
-
-全自动开发脚本特性：
-- 迭代执行任务直到全部完成或达到最大次数 (默认 50)
-- 每个任务 5 分钟超时
-- 自动 Git 提交和推送
-- 阻塞检测和恢复机制
-- **root 用户限制**: 不支持 `--dangerously-skip-permissions`
-
-## Important Files
-
-| File | Purpose |
-|------|---------|
-| `.ai/task.json` | 开发任务列表，按 priority 排序 |
-| `.ai/cloud.md` | Claude 自动开发提示词，包含阶段指令 |
-| `.ai/progress.txt` | 任务完成日志 |
-| `.ai/.blocked` | 阻塞标记文件 |
-| `backend/todos.db` | SQLite 数据库，已包含测试数据 |
+# 任务进度
+cat .ai/progress.txt
+```
