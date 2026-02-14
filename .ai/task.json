@@ -5,6 +5,6 @@
     "description": "在项目根目录创建一个hello.txt文件，内容为'Hello from Claude!'",
     "acceptance_criteria": ["hello.txt文件存在", "文件内容正确"],
     "priority": 1,
-    "completed": true
+    "completed": false
   }
 ]
