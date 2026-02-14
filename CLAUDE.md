@@ -116,17 +116,26 @@ node seed.js
 
 ---
 
+## 测试任务
+
+当前 T1 是一个**验证自动化流程的测试任务**，用于确认 `run_loop.sh` 脚本能正常工作：
+
+- **任务内容**：在项目根目录创建 `hello.txt` 文件
+- **用途**：快速验证 Claude 自动执行、Git 提交、状态更新等流程
+
+---
+
 ## 开发蓝图示例 (`.ai/task.json`)
 
 ```json
 [
   {
     "id": "T1",
-    "title": "初始化项目结构",
-    "description": "创建项目文件夹，初始化前后端项目",
-    "acceptance_criteria": ["前端可启动", "后端可启动"],
+    "title": "测试任务：创建hello.txt文件",
+    "description": "在项目根目录创建一个hello.txt文件，内容为'Hello from Claude!'",
+    "acceptance_criteria": ["hello.txt文件存在", "文件内容正确"],
     "priority": 1,
-    "completed": true
+    "completed": false
   }
 ]
 ```
