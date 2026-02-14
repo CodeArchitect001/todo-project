@@ -5,7 +5,7 @@
     "description": "在项目根目录创建 file1.txt 文件，内容为 'Task 1'",
     "acceptance_criteria": ["file1.txt存在"],
     "priority": 1,
-    "completed": false
+    "completed": true
   },
   {
     "id": "T2",
