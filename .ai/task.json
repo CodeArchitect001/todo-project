@@ -1,10 +1,42 @@
 [
   {
     "id": "T1",
-    "title": "测试任务：创建hello.txt文件",
-    "description": "在项目根目录创建一个hello.txt文件，内容为'Hello from Claude!'",
-    "acceptance_criteria": ["hello.txt文件存在", "文件内容正确"],
+    "title": "创建 file1.txt",
+    "description": "在项目根目录创建 file1.txt 文件，内容为 'Task 1'",
+    "acceptance_criteria": ["file1.txt存在"],
     "priority": 1,
-    "completed": true
+    "completed": false
+  },
+  {
+    "id": "T2",
+    "title": "创建 file2.txt",
+    "description": "在项目根目录创建 file2.txt 文件，内容为 'Task 2'",
+    "acceptance_criteria": ["file2.txt存在"],
+    "priority": 2,
+    "completed": false
+  },
+  {
+    "id": "T3",
+    "title": "创建 file3.txt",
+    "description": "在项目根目录创建 file3.txt 文件，内容为 'Task 3'",
+    "acceptance_criteria": ["file3.txt存在"],
+    "priority": 3,
+    "completed": false
+  },
+  {
+    "id": "T4",
+    "title": "创建 file4.txt",
+    "description": "在项目根目录创建 file4.txt 文件，内容为 'Task 4'",
+    "acceptance_criteria": ["file4.txt存在"],
+    "priority": 4,
+    "completed": false
+  },
+  {
+    "id": "T5",
+    "title": "创建 file5.txt",
+    "description": "在项目根目录创建 file5.txt 文件，内容为 'Task 5'",
+    "acceptance_criteria": ["file5.txt存在"],
+    "priority": 5,
+    "completed": false
   }
 ]

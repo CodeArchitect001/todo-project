@@ -116,17 +116,13 @@ node seed.js
 
 ---
 
-## 测试任务
+## 测试方法
 
-当前 T1 是一个**验证自动化流程的测试任务**，用于确认 `run_loop.sh` 脚本能正常工作：
+### 单任务测试
 
-- **任务内容**：在项目根目录创建 `hello.txt` 文件
-- **用途**：快速验证 Claude 自动执行、Git 提交、状态更新等流程
+用于快速验证脚本基本功能是否正常。
 
----
-
-## 开发蓝图示例 (`.ai/task.json`)
-
+**task.json 配置**：
 ```json
 [
   {
@@ -138,6 +134,49 @@ node seed.js
     "completed": false
   }
 ]
+```
+
+**验证点**：
+- Claude 能否正确读取和执行任务
+- Git 提交和推送是否成功
+- task.json 状态是否正确更新
+- progress.txt 日志是否正确记录
+
+---
+
+### 多任务测试（5个连续任务）
+
+用于验证脚本循环执行能力和任务切换逻辑。
+
+**task.json 配置**：
+```json
+[
+  {"id": "T1", "title": "创建 file1.txt", "description": "创建 file1.txt，内容为 'Task 1'", "acceptance_criteria": ["file1.txt存在"], "priority": 1, "completed": false},
+  {"id": "T2", "title": "创建 file2.txt", "description": "创建 file2.txt，内容为 'Task 2'", "acceptance_criteria": ["file2.txt存在"], "priority": 2, "completed": false},
+  {"id": "T3", "title": "创建 file3.txt", "description": "创建 file3.txt，内容为 'Task 3'", "acceptance_criteria": ["file3.txt存在"], "priority": 3, "completed": false},
+  {"id": "T4", "title": "创建 file4.txt", "description": "创建 file4.txt，内容为 'Task 4'", "acceptance_criteria": ["file4.txt存在"], "priority": 4, "completed": false},
+  {"id": "T5", "title": "创建 file5.txt", "description": "创建 file5.txt，内容为 'Task 5'", "acceptance_criteria": ["file5.txt存在"], "priority": 5, "completed": false}
+]
+```
+
+**验证点**：
+- 任务是否按 priority 顺序执行
+- 循环迭代是否正常工作
+- 每个任务完成后状态是否正确更新
+- 所有任务完成后是否正确触发终止条件
+
+---
+
+### 重置测试
+
+重新测试前必须执行：
+
+```bash
+# 1. 清空 progress.txt
+> .ai/progress.txt
+
+# 2. 删除测试生成的文件
+rm -f file*.txt hello.txt
 ```
 
 ---
