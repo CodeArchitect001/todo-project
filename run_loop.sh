@@ -335,11 +335,11 @@ main_loop() {
         PROMPT_CONTENT=$(cat "$PROMPT_FILE")
 
         log "⏳ Claude 正在运行 (超时: ${SINGLE_TASK_TIMEOUT}秒)..."
-        log "💡 提示：如果长时间无输出，请尝试输入 'y' 并回车（可能是权限确认提示）"
+        log "💡 按 Ctrl+C 可中断当前任务"
         echo "========================================"
-        # 前台启动 claude，使用 timeout 实现超时保护
+        # 前台启动 claude，使用 timeout --foreground 确保信号正确传递
         # shellcheck disable=SC2086
-        timeout "$SINGLE_TASK_TIMEOUT" "$CLAUDE_CMD" $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
+        timeout --foreground "$SINGLE_TASK_TIMEOUT" "$CLAUDE_CMD" $SKIP_PERMISSIONS_FLAG -p "$PROMPT_CONTENT"
         claude_exit_code=$?
         echo "========================================"
         log "Claude 执行结束，退出码: $claude_exit_code"
